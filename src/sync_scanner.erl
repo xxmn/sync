@@ -145,35 +145,35 @@ handle_cast(discover_modules, State) ->
     NewState = State#state { modules=FilteredModules, timers=NewTimers },
     {noreply, NewState};
 
-handle_cast(discover_src_dirs, State) ->
-    case application:get_env(sync, src_dirs) of
-        undefined ->
-            discover_source_dirs(State, []);
-        {ok, {add, DirsAndOpts}} ->
-            discover_source_dirs(State, dirs(DirsAndOpts));
-        {ok, {replace, DirsAndOpts}} ->
-            {noreply, State#state{src_dirs = dirs(DirsAndOpts), hrl_dirs = []}}
-    end;
+%% handle_cast(discover_src_dirs, State) ->
+%%     case application:get_env(sync, src_dirs) of
+%%         undefined ->
+%%             discover_source_dirs(State, []);
+%%         {ok, {add, DirsAndOpts}} ->
+%%             discover_source_dirs(State, dirs(DirsAndOpts));
+%%         {ok, {replace, DirsAndOpts}} ->
+%%             {noreply, State#state{src_dirs = dirs(DirsAndOpts), hrl_dirs = []}}
+%%     end;
 
-handle_cast(discover_src_files, State) ->
-    %% For each source dir, get a list of source files...
-    F = fun(X, Acc) ->
-        sync_utils:wildcard(X, ".*\\.(erl|dtl|lfe|ex)$") ++ Acc
-    end,
-    ErlFiles = lists:usort(lists:foldl(F, [], State#state.src_dirs)),
-
-    %% For each include dir, get a list of hrl files...
-    Fhrl = fun(X, Acc) ->
-        sync_utils:wildcard(X, ".*\\.hrl$") ++ Acc
-    end,
-    HrlFiles = lists:usort(lists:foldl(Fhrl, [], State#state.hrl_dirs)),
-
-    %% Schedule the next interval...
-    NewTimers = schedule_cast(discover_src_files, 5000, State#state.timers),
-
-    %% Return with updated files...
-    NewState = State#state { src_files=ErlFiles, hrl_files=HrlFiles, timers=NewTimers },
-    {noreply, NewState};
+%% handle_cast(discover_src_files, State) ->
+%%     %% For each source dir, get a list of source files...
+%%     F = fun(X, Acc) ->
+%%         sync_utils:wildcard(X, ".*\\.(erl|dtl|lfe|ex)$") ++ Acc
+%%     end,
+%%     ErlFiles = lists:usort(lists:foldl(F, [], State#state.src_dirs)),
+%% 
+%%     %% For each include dir, get a list of hrl files...
+%%     Fhrl = fun(X, Acc) ->
+%%         sync_utils:wildcard(X, ".*\\.hrl$") ++ Acc
+%%     end,
+%%     HrlFiles = lists:usort(lists:foldl(Fhrl, [], State#state.hrl_dirs)),
+%% 
+%%     %% Schedule the next interval...
+%%     NewTimers = schedule_cast(discover_src_files, 5000, State#state.timers),
+%% 
+%%     %% Return with updated files...
+%%     NewState = State#state { src_files=ErlFiles, hrl_files=HrlFiles, timers=NewTimers },
+%%     {noreply, NewState};
 
 handle_cast(compare_beams, State) ->
     %% Create a list of beam file lastmod times, but filter out modules not having 
@@ -204,41 +204,41 @@ handle_cast(compare_beams, State) ->
     NewState = State#state { beam_lastmod=NewBeamLastMod, timers=NewTimers },
     {noreply, NewState};
 
-handle_cast(compare_src_files, State) ->
-    %% Create a list of file lastmod times...
-    F = fun(X) ->
-        LastMod = filelib:last_modified(X),
-        {X, LastMod}
-    end,
-    NewSrcFileLastMod = lists:usort([F(X) || X <- State#state.src_files]),
+%% handle_cast(compare_src_files, State) ->
+%%     %% Create a list of file lastmod times...
+%%     F = fun(X) ->
+%%         LastMod = filelib:last_modified(X),
+%%         {X, LastMod}
+%%     end,
+%%     NewSrcFileLastMod = lists:usort([F(X) || X <- State#state.src_files]),
+%% 
+%%     %% Compare to previous results, if there are changes, then recompile the file...
+%%     process_src_file_lastmod(State#state.src_file_lastmod, NewSrcFileLastMod, State#state.patching),
+%% 
+%%     %% Schedule the next interval...
+%%     NewTimers = schedule_cast(compare_src_files, 1000, State#state.timers),
+%% 
+%%     %% Return with updated src_file lastmod...
+%%     NewState = State#state { src_file_lastmod=NewSrcFileLastMod, timers=NewTimers },
+%%     {noreply, NewState};
 
-    %% Compare to previous results, if there are changes, then recompile the file...
-    process_src_file_lastmod(State#state.src_file_lastmod, NewSrcFileLastMod, State#state.patching),
-
-    %% Schedule the next interval...
-    NewTimers = schedule_cast(compare_src_files, 1000, State#state.timers),
-
-    %% Return with updated src_file lastmod...
-    NewState = State#state { src_file_lastmod=NewSrcFileLastMod, timers=NewTimers },
-    {noreply, NewState};
-
-handle_cast(compare_hrl_files, State) ->
-    %% Create a list of file lastmod times...
-    F = fun(X) ->
-        LastMod = filelib:last_modified(X),
-        {X, LastMod}
-    end,
-    NewHrlFileLastMod = lists:usort([F(X) || X <- State#state.hrl_files]),
-
-    %% Compare to previous results, if there are changes, then recompile src files that depends
-    process_hrl_file_lastmod(State#state.hrl_file_lastmod, NewHrlFileLastMod, State#state.src_files, State#state.patching),
-
-    %% Schedule the next interval...
-    NewTimers = schedule_cast(compare_hrl_files, 2000, State#state.timers),
-
-    %% Return with updated hrl_file lastmod...
-    NewState = State#state { hrl_file_lastmod=NewHrlFileLastMod, timers=NewTimers },
-    {noreply, NewState};
+%% handle_cast(compare_hrl_files, State) ->
+%%     %% Create a list of file lastmod times...
+%%     F = fun(X) ->
+%%         LastMod = filelib:last_modified(X),
+%%         {X, LastMod}
+%%     end,
+%%     NewHrlFileLastMod = lists:usort([F(X) || X <- State#state.hrl_files]),
+%% 
+%%     %% Compare to previous results, if there are changes, then recompile src files that depends
+%%     process_hrl_file_lastmod(State#state.hrl_file_lastmod, NewHrlFileLastMod, State#state.src_files, State#state.patching),
+%% 
+%%     %% Schedule the next interval...
+%%     NewTimers = schedule_cast(compare_hrl_files, 2000, State#state.timers),
+%% 
+%%     %% Return with updated hrl_file lastmod...
+%%     NewState = State#state { hrl_file_lastmod=NewHrlFileLastMod, timers=NewTimers },
+%%     {noreply, NewState};
 
 handle_cast(info, State) ->
     io:format("Modules: ~p~n", [State#state.modules]),
@@ -314,12 +314,15 @@ process_beam_lastmod([{Module, _}|T1], [{Module, _}|T2], EnablePatching, {FirstB
 
             %% If patching is enabled, then reload the module across *all* connected
             %% erlang VMs, and save the compiled beam to disk.
+
+			io:format("~s: Reloaded! (Beam changed.)~n", [Module]),
+			
             case EnablePatching of
                 true ->
                     {ok, NumNodes} = load_module_on_all_nodes(Module),
                     Msg = io_lib:format("~s: Reloaded on ~p nodes! (Beam changed.)~n", [Module, NumNodes]),
                     sync_notify:log_success(Msg);
-                false ->
+                false -> 
                     %% Print a status message...
                     Msg = io_lib:format("~s: Reloaded! (Beam changed.)~n", [Module]),
                     sync_notify:log_success(Msg)
